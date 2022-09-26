@@ -1,29 +1,24 @@
-const {
-  userModel,
-  roomModel,
-  locationModel,
-  chatModel,
-} = require("./db/mongo");
-const crypto = require("crypto");
-const security = require("../security");
+const { userModel, roomModel, locationModel, chatModel } = require('./db/mongo');
+const crypto = require('crypto');
+const security = require('../security');
 
 //사용 가능한 프로필 이미지 url들
 const defaultProfile = [
-  "CatGeoul.png",
-  "CatGreen.png",
-  "CatJabo.png",
-  "CatOTL.png",
-  "CatTaxi.png",
-  "GooseGeoul.png",
-  "GooseGreen.png",
-  "GooseJabo.png",
-  "GooseOTL.png",
-  "GooseTaxi.png",
-  "NupjukGeoul.png",
-  "NupjukGreen.png",
-  "NupjukJabo.png",
-  "NupjukOTL.png",
-  "NupjukTaxi.png",
+  'CatGeoul.png',
+  'CatGreen.png',
+  'CatJabo.png',
+  'CatOTL.png',
+  'CatTaxi.png',
+  'GooseGeoul.png',
+  'GooseGreen.png',
+  'GooseJabo.png',
+  'GooseOTL.png',
+  'GooseTaxi.png',
+  'NupjukGeoul.png',
+  'NupjukGreen.png',
+  'NupjukJabo.png',
+  'NupjukOTL.png',
+  'NupjukTaxi.png',
 ];
 
 // 기존 프로필 사진의 URI 중 하나를 무작위로 선택해 반환합니다.
@@ -41,9 +36,9 @@ const generateUser = async (id, num, isAdmin) => {
     joinat: Date.now(),
     subinfo: {
       kaist: new String(20220000 + num),
-      sparcs: "",
-      facebook: "",
-      twitter: "",
+      sparcs: '',
+      facebook: '',
+      twitter: '',
     },
     email: `${id}@kaist.ac.kr`,
     isAdmin: isAdmin,
@@ -54,7 +49,7 @@ const generateUser = async (id, num, isAdmin) => {
 
 const generateSampleLocations = async (locations) => {
   if (locations.length === 0) {
-    console.log("Please provide location(s)!");
+    console.log('Please provide location(s)!');
   }
 
   for (const location of locations) {
@@ -72,6 +67,8 @@ const generateSampleLocations = async (locations) => {
 const generateRoom = async (sampleLocationOids, num, daysAfter, creatorId) => {
   const date = new Date();
   date.setDate(date.getDate() + daysAfter);
+  date.setHours(date.getHours() - 3);
+  date.setMinutes(Math.floor(Math.random() * 60));
 
   let fromIdx = 0;
   let toIdx = 0;
@@ -102,7 +99,7 @@ const joinUserToRoom = async (userIdsInRoom, userIdsOutRoom, roomId) => {
   // 방, 유저 상태 갱신
   userIdsInRoom.push(userOid);
   userIdsOutRoom.splice(authorIdx, 1);
-  const user = await userModel.findById(userOid, "room");
+  const user = await userModel.findById(userOid, 'room');
   user.room.push(roomId);
   await user.save();
 
@@ -117,7 +114,7 @@ const abortUserfromRoom = async (userIdsInRoom, userIdsOutRoom, roomId) => {
   // 방, 유저 상태 갱신
   userIdsOutRoom.push(userOid);
   userIdsInRoom.splice(authorIdx, 1);
-  const user = await userModel.findById(userOid, "room");
+  const user = await userModel.findById(userOid, 'room');
   user.room.splice(user.room.indexOf(roomId), 1);
   await user.save();
 
@@ -128,7 +125,7 @@ const generateNormalChat = async (i, roomId, userOid, time) => {
   const user = await userModel.findById(userOid);
   const newChat = new chatModel({
     roomId: roomId,
-    type: "text",
+    type: 'text',
     authorId: user._id,
     content: `안녕하세요! (${i}번째 메시지)`,
     time: time,
@@ -141,7 +138,7 @@ const generateJoinAbortChat = async (roomId, userOid, isJoining, time) => {
   const user = await userModel.findById(userOid);
   const newChat = new chatModel({
     roomId: roomId,
-    type: isJoining ? "in" : "out",
+    type: isJoining ? 'in' : 'out',
     authorId: user._id,
     content: user.id,
     time: time,
@@ -151,7 +148,7 @@ const generateJoinAbortChat = async (roomId, userOid, isJoining, time) => {
 };
 
 const generateChats = async (roomId, userOids, numOfChats) => {
-  const roomPopulateQuery = [{ path: "part", select: "id name nickname -_id" }];
+  const roomPopulateQuery = [{ path: 'part', select: 'id name nickname -_id' }];
   const room = await roomModel.findById(roomId).populate(roomPopulateQuery);
 
   let userIdsInRoom = [];
@@ -165,33 +162,18 @@ const generateChats = async (roomId, userOids, numOfChats) => {
     lastTime += Math.floor(Math.random() * maximumIntervalBtwChats);
     const event = Math.random();
 
-    if (
-      userIdsInRoom.length === 0 ||
-      (event < occurenceOfJoin && userIdsOutRoom.length !== 0)
-    ) {
+    if (userIdsInRoom.length === 0 || (event < occurenceOfJoin && userIdsOutRoom.length !== 0)) {
       // 더 들어올 사용자가 있을 경우, 더 들어옴
       // 방, 유저 상태 갱신
       let userOid;
-      ({ userIdsInRoom, userIdsOutRoom, userOid } = await joinUserToRoom(
-        userIdsInRoom,
-        userIdsOutRoom,
-        roomId
-      ));
+      ({ userIdsInRoom, userIdsOutRoom, userOid } = await joinUserToRoom(userIdsInRoom, userIdsOutRoom, roomId));
       // 입장 메시지 생성
       await generateJoinAbortChat(roomId, userOid, true, lastTime);
-    } else if (
-      occurenceOfJoin <= event &&
-      event < occurenceOfJoin + occurenceOfAbort &&
-      userIdsInRoom.length > 1
-    ) {
+    } else if (occurenceOfJoin <= event && event < occurenceOfJoin + occurenceOfAbort && userIdsInRoom.length > 1) {
       // 나갈 사용자가 있을 경우, 나감
       // 방, 유저 상태 갱신
       let userOid;
-      ({ userIdsInRoom, userIdsOutRoom, userOid } = await abortUserfromRoom(
-        userIdsInRoom,
-        userIdsOutRoom,
-        roomId
-      ));
+      ({ userIdsInRoom, userIdsOutRoom, userOid } = await abortUserfromRoom(userIdsInRoom, userIdsOutRoom, roomId));
       // 퇴장 메시지 생성
       await generateJoinAbortChat(roomId, userOid, false, lastTime);
     } else {
